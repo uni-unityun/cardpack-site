@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>カードコレクション</title>
+<!-- このページは「カードパック」設定ページの「閲覧サイト用に書き出す」で作られます。中身は data.js に入っています -->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbf7fa; --panel: #ffffff; --text: #3d2a40; --sub: #8a7590;
+    --line: #eadde6; --accent: #e2559c; --accent-soft: #fbe3ef; --paper: #fffdf8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1e1a22; --panel: #2a2430; --text: #f1e6f0; --sub: #b3a2b6;
+            --line: #3e3445; --accent: #ff8fc7; --accent-soft: #46283a; --paper: #fffdf8; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.6 "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
+         padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 16px 60px; }
+  header.site { margin-bottom: 22px; }
+  header.site h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: .02em; }
+  header.site p { margin: 2px 0 0; color: var(--sub); font-size: 13px; }
+
+  /* ---------- 一覧 ---------- */
+  .tools { display: flex; gap: 10px; margin-bottom: 12px; }
+  .tools input { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
+                 border-radius: 999px; padding: 8px 16px; width: 100%; max-width: 320px; }
+  .users { list-style: none; margin: 0; padding: 0; background: var(--panel);
+           border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .users li + li { border-top: 1px solid var(--line); }
+  .users a { display: grid; grid-template-columns: 2.2em 40px 1fr auto; gap: 12px; align-items: center;
+             padding: 10px 16px; color: inherit; text-decoration: none; }
+  .users a:hover { background: var(--accent-soft); }
+  .users a:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .rank { color: var(--sub); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .icon { width: 40px; height: 40px; border-radius: 50%; background: var(--line); object-fit: cover; display: block; }
+  .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meter { display: block; height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 4px; max-width: 360px; }
+  .meter i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+  .stat { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--sub); white-space: nowrap; }
+  .stat b { color: var(--text); font-size: 18px; }
+  .done .stat b { color: var(--accent); }
+  .empty { color: var(--sub); padding: 24px 16px; text-align: center; }
+
+  /* ---------- 個人ページ ---------- */
+  .back { display: inline-block; color: var(--sub); text-decoration: none; margin-bottom: 14px; }
+  .back:hover { color: var(--text); }
+  .profile { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+  .profile .icon { width: 64px; height: 64px; }
+  .profile h2 { margin: 0; font-size: 24px; }
+  .profile p { margin: 0; color: var(--sub); }
+  .big { font-size: 40px; font-weight: 900; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+  .chips li { border: 2px solid var(--rc); border-radius: 999px; padding: 2px 12px; font-size: 13px;
+              font-variant-numeric: tabular-nums; background: var(--panel); }
+  .chips li b { color: var(--rt); margin-right: 6px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .filters button { font: inherit; font-size: 13px; color: var(--sub); background: transparent; cursor: pointer;
+                    border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; }
+  .filters button[aria-pressed=true] { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+  .filters button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  h3 { font-size: 15px; margin: 24px 0 10px; color: var(--sub); font-weight: 700; }
+
+  /* ---------- カード ---------- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 18px 14px; }
+  .slot { margin: 0; }
+  .card { position: relative; aspect-ratio: var(--ratio, 5 / 7); border-radius: var(--cr, 12px);
+          padding: 3.5%; background: var(--rc); box-shadow: 0 4px 12px rgba(60, 20, 50, .18); }
+  .card.noframe { padding: 0; background: none; }
+  .card.rainbow { background: conic-gradient(from 210deg, #ff5f9e, #ffd84d, #5fffb0, #5fc8ff, #b45fff, #ff5f9e); }
+  .card.noframe.rainbow { background: none; }
+  .paper { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--paper); color: #3d2a40;
+           border-radius: max(0px, calc(var(--cr, 12px) * .7)); display: flex; flex-direction: column;
+           align-items: center; justify-content: center; gap: 4px; text-align: center; }
+  .card.noframe .paper { border-radius: var(--cr, 12px); }
+  .paper img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; display: block; max-width: none; }
+  .paper .rl { font-size: 26px; font-weight: 900; color: var(--rt); line-height: 1; }
+  .paper .nm { font-size: 12px; font-weight: 700; padding: 0 6px; }
+  .badge { position: absolute; left: 6%; top: 5%; padding: 0 7px; border-radius: 999px; background: var(--rc);
+           color: #fff; font-size: 12px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .count { position: absolute; right: 5%; bottom: 4%; min-width: 1.8em; padding: 0 6px; border-radius: 999px;
+           background: rgba(30, 15, 30, .78); color: #fff; font-size: 12px; font-weight: 700; text-align: center; }
+  .card.missing { background: var(--line); box-shadow: none; }
+  .card.missing .paper { background: repeating-linear-gradient(45deg, var(--panel) 0 8px, var(--bg) 8px 16px); }
+  .card.missing .q { font-size: 30px; font-weight: 900; color: var(--sub); opacity: .6; }
+  .card.missing .badge { background: var(--sub); opacity: .7; }
+  figcaption { font-size: 12px; margin-top: 6px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .missing + figcaption { color: var(--sub); }
+  footer { margin-top: 40px; color: var(--sub); font-size: 12px; text-align: center; }
+  @media (max-width: 520px) {
+    .users a { grid-template-columns: 1.6em 36px 1fr auto; gap: 10px; padding: 10px 12px; }
+    .icon { width: 36px; height: 36px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<footer id="foot"></footer>
+
+<!-- 手動で書き出したときは data.js、公開サイトでは data.json を読みます -->
+<script src="data.js" onerror="void 0"></script>
+<script>
+let D = window.CARDPACK_DATA;
+const app = document.getElementById("app");
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+// 画像の位置・拡大を合わせる（設定ページ・テンプレートと同じ計算）
+function fitArt(img, crop) {
+  const box = img.parentElement;
+  const iw = img.naturalWidth, ih = img.naturalHeight, bw = box.clientWidth, bh = box.clientHeight;
+  if (!iw || !ih || !bw || !bh) return;
+  const c = { x: 0.5, y: 0.5, zoom: 1, ...(crop || {}) };
+  const z = Math.min(5, Math.max(1, Number(c.zoom) || 1));
+  const a = iw / ih, A = bw / bh;
+  let w = 1, h = 1;
+  if (a > A) w = a / A; else h = A / a;
+  w *= z; h *= z;
+  const left = Math.min(0, Math.max(1 - w, 0.5 - c.x * w));
+  const top = Math.min(0, Math.max(1 - h, 0.5 - c.y * h));
+  Object.assign(img.style, { width: w * 100 + "%", height: h * 100 + "%", left: left * 100 + "%", top: top * 100 + "%", objectFit: "fill" });
+}
+
+(async () => {
+  if (!D) {
+    try {
+      const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
+      if (r.ok) D = await r.json();
+    } catch (e) { /* ファイルを直接開いたときなど */ }
+  }
+  if (!D) {
+    app.innerHTML = `<p class="empty">記録データが見つかりません。少し待ってから開き直してください。</p>`;
+    return;
+  }
+  start();
+})();
+
+function start() {
+  const S = D.settings;
+  const [ra, rb] = String(S.cardRatio || "5:7").split(":").map(Number);
+  document.body.style.setProperty("--ratio", `${ra || 5} / ${rb || 7}`);
+  // 設定の角の丸さ（230px幅のカード基準）を一覧の大きさに合わせる
+  document.body.style.setProperty("--cr", Math.round((Number(S.cardRadius) || 0) * 0.55) + "px");
+  document.title = D.title || "カードコレクション";
+
+  const rarities = S.rarities;
+  const rank = (id) => rarities.findIndex((r) => r.id === id);
+  const rarityOf = (id) => rarities[rank(id)] || { id, label: id, color: "#ccc", text: "#888" };
+  const active = D.cards.filter((c) => c.active);
+  const total = active.length || 1;
+  // 高いレア度から並べる
+  const byRarity = (a, b) => rank(b.rarity) - rank(a.rarity) || a.id.localeCompare(b.id);
+
+  const users = D.users.map((u, i) => {
+    const kinds = active.filter((c) => u.cards[c.id]).length;
+    return { ...u, key: i, kinds };
+  }).sort((a, b) => b.kinds - a.kinds || b.packs - a.packs);
+
+  const when = new Date(D.exportedAt);
+  document.getElementById("foot").textContent =
+    `${when.toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" })} 時点の記録`;
+
+  function head(sub) {
+    return `<header class="site"><h1>${esc(D.title || "カードコレクション")}</h1>${sub ? `<p>${sub}</p>` : ""}</header>`;
+  }
+
+  function cardHtml(c, count) {
+    const r = rarityOf(c.rarity);
+    const cls = ["card"];
+    if (S.showFrame === false) cls.push("noframe");
+    if (r.rainbow) cls.push("rainbow");
+    const style = `--rc:${esc(r.color)};--rt:${esc(r.text)}`;
+    if (!count) {
+      return `<figure class="slot"><div class="${cls.join(" ")} missing" style="${style}">
+        <div class="paper"><span class="q">？</span></div><span class="badge">${esc(r.label)}</span></div>
+        <figcaption>？？？</figcaption></figure>`;
+    }
+    const inner = c.image
+      ? `<img src="${esc(c.image)}" alt="${esc(c.name)}" loading="lazy" data-id="${esc(c.id)}">`
+      : `<span class="rl">${esc(r.label)}</span><span class="nm">${esc(c.name)}</span>`;
+    return `<figure class="slot"><div class="${cls.join(" ")}" style="${style}">
+      <div class="paper">${inner}</div>
+      ${c.image ? `<span class="badge">${esc(r.label)}</span>` : ""}
+      ${count > 1 ? `<span class="count">×${count}</span>` : ""}</div>
+      <figcaption>${esc(c.name)}</figcaption></figure>`;
+  }
+
+  function iconHtml(u) {
+    return u.icon ? `<img class="icon" src="${esc(u.icon)}" alt="" referrerpolicy="no-referrer">` : `<span class="icon"></span>`;
+  }
+
+  // ---------- 一覧 ----------
+  function renderList(q = "") {
+    const list = users.filter((u) => !q || u.name.toLowerCase().includes(q.toLowerCase()));
+    app.innerHTML = head(`${users.length}人が参加・全${active.length}種類`) + `
+      <div class="tools"><input type="search" id="q" placeholder="名前でさがす" aria-label="名前でさがす" value="${esc(q)}"></div>
+      ${list.length ? `<ul class="users">${list.map((u) => {
+        const pct = Math.min(100, Math.round(u.kinds / total * 100));
+        return `<li class="${u.kinds >= active.length && active.length ? "done" : ""}"><a href="#u${u.key}">
+          <span class="rank">${users.indexOf(u) + 1}</span>
+          ${iconHtml(u)}
+          <span class="who"><b>${esc(u.name)}</b><span class="meter"><i style="width:${pct}%"></i></span></span>
+          <span class="stat"><b>${pct}%</b><br>${u.kinds}/${active.length}種・${u.packs}パック</span>
+        </a></li>`;
+      }).join("")}</ul>` : `<p class="empty">${users.length ? "見つかりませんでした" : "まだ誰もパックを引いていません"}</p>`}`;
+    const input = document.getElementById("q");
+    input.addEventListener("input", () => {
+      const pos = input.selectionStart;
+      renderList(input.value);
+      const again = document.getElementById("q");
+      again.focus(); again.setSelectionRange(pos, pos);
+    });
+  }
+
+  // ---------- 個人ページ ----------
+  function renderUser(u, filter = "all") {
+    const pct = Math.min(100, Math.round(u.kinds / total * 100));
+    const sorted = active.slice().sort(byRarity);
+    const shown = sorted.filter((c) => filter === "all" || (filter === "have" ? u.cards[c.id] : !u.cards[c.id]));
+    // 抽選から外れたけど持っているカード
+    const retired = D.cards.filter((c) => !c.active && u.cards[c.id]).sort(byRarity);
+    const chips = rarities.slice().reverse().map((r) => {
+      const all = active.filter((c) => c.rarity === r.id);
+      if (!all.length) return "";
+      const have = all.filter((c) => u.cards[c.id]).length;
+      return `<li style="--rc:${esc(r.color)};--rt:${esc(r.text)}"><b>${esc(r.label)}</b>${have}/${all.length}</li>`;
+    }).join("");
+    const btn = (v, label) => `<button data-f="${v}" aria-pressed="${filter === v}">${label}</button>`;
+
+    app.innerHTML = head("") + `
+      <a class="back" href="#">← 一覧にもどる</a>
+      <div class="profile">
+        ${iconHtml(u)}
+        <div><h2>${esc(u.name)}</h2><p>${u.packs}パック開封・${u.kinds}/${active.length}種類</p></div>
+        <span class="spacer" style="flex:1"></span>
+        <span class="big">${pct}%</span>
+      </div>
+      <ul class="chips">${chips}</ul>
+      <div class="filters" role="group" aria-label="表示するカード">${btn("all", "すべて")}${btn("have", "持っている")}${btn("miss", "まだ")}</div>
+      ${shown.length ? `<div class="grid">${shown.map((c) => cardHtml(c, u.cards[c.id] || 0)).join("")}</div>`
+                     : `<p class="empty">${filter === "miss" ? "コンプリート！" : "まだカードがありません"}</p>`}
+      ${retired.length && filter !== "miss" ? `<h3>今は出ないカード</h3><div class="grid">${retired.map((c) => cardHtml(c, u.cards[c.id])).join("")}</div>` : ""}`;
+    app.querySelectorAll(".filters button").forEach((b) =>
+      b.addEventListener("click", () => renderUser(u, b.dataset.f)));
+    app.querySelectorAll("img[data-id]").forEach((img) => {
+      const card = D.cards.find((c) => c.id === img.dataset.id);
+      const go = () => fitArt(img, card && card.crop);
+      if (img.complete && img.naturalWidth) go(); else img.addEventListener("load", go);
+    });
+  }
+
+  function route() {
+    const m = /^#u(\d+)$/.exec(location.hash);
+    const u = m && users.find((x) => x.key === Number(m[1]));
+    if (u) { renderUser(u); window.scrollTo(0, 0); }
+    else renderList();
+  }
+  window.addEventListener("hashchange", route);
+  route();
+}
+</script>
+</body>
+</html>
