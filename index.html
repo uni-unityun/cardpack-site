@@ -55,9 +55,51 @@
   .profile p { margin: 0; color: var(--sub); }
   .big { font-size: 40px; font-weight: 900; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
-  .chips li { border: 2px solid var(--rc); border-radius: 999px; padding: 2px 12px; font-size: 13px;
-              font-variant-numeric: tabular-nums; background: var(--panel); }
-  .chips li b { color: var(--rt); margin-right: 6px; }
+  .chips button { font: inherit; color: inherit; cursor: pointer; border: 2px solid var(--rc); border-radius: 999px;
+                  padding: 2px 12px; font-size: 13px; font-variant-numeric: tabular-nums; background: var(--panel); }
+  .chips button b { color: var(--rt); margin-right: 6px; }
+  .chips button[aria-pressed=true] { background: var(--rc); color: #fff; }
+  .chips button[aria-pressed=true] b { color: #fff; }
+  .chips.picking button[aria-pressed=false] { opacity: .5; }
+  .chips button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .reset { font: inherit; font-size: 13px; color: var(--sub); background: transparent; cursor: pointer;
+           border: 1px dashed var(--line); border-radius: 999px; padding: 2px 12px; }
+  .reset:disabled { opacity: .4; cursor: default; }
+  .reset:not(:disabled):hover { color: var(--text); border-color: var(--accent); }
+
+  /* ---------- 累計売上 ---------- */
+  .pts { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; background: var(--panel); border: 1px solid var(--line);
+         border-left: 6px solid var(--accent); border-radius: 14px; padding: 12px 18px; margin: 0 0 18px; }
+  .pts .pl { color: var(--sub); font-weight: 700; font-size: 14px; }
+  .pts .pv { font-size: 34px; font-weight: 900; color: var(--accent); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .pts .pv small { font-size: 15px; margin-left: 6px; color: var(--sub); font-weight: 700; }
+
+  /* ---------- 拡大表示 ---------- */
+  .open { all: unset; display: block; width: 100%; box-sizing: border-box; cursor: zoom-in; border-radius: var(--cr, 12px); }
+  .open:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  .open:hover .card { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(60, 20, 50, .25); }
+  .open .card { transition: transform .15s, box-shadow .15s; }
+  dialog#zoom { border: none; background: transparent; padding: 0; max-width: 100vw; max-height: 100vh; overflow: visible; }
+  dialog#zoom::backdrop { background: rgba(20, 8, 20, .78); }
+  .zwrap { display: flex; flex-direction: column; align-items: center; gap: 12px; color: #fff; }
+  .zrow { display: flex; align-items: center; gap: 12px; }
+  .zcard { width: min(76vw, 380px, calc(68vh * var(--rn, .714))); }
+  .zcard .card { box-shadow: 0 10px 40px rgba(0, 0, 0, .5); border-radius: var(--zcr, 20px); }
+  .zcard .paper { border-radius: max(0px, calc(var(--zcr, 20px) * .7)); }
+  .zcard .card.noframe .paper { border-radius: var(--zcr, 20px); }
+  .zcard .badge { font-size: 16px; padding: 1px 10px; }
+  .zcard .paper .rl { font-size: 48px; }
+  .zcard .paper .nm { font-size: 18px; }
+  .zinfo { text-align: center; line-height: 1.4; }
+  .zinfo b { font-size: 20px; display: block; }
+  .zinfo span { font-size: 14px; opacity: .85; }
+  .znav, .zclose { font: inherit; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35);
+                   border-radius: 999px; cursor: pointer; }
+  .znav { width: 44px; height: 44px; font-size: 20px; flex: none; }
+  .znav:disabled { opacity: .25; cursor: default; }
+  .zclose { padding: 6px 22px; font-size: 14px; }
+  .znav:focus-visible, .zclose:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+  @media (max-width: 520px) { .znav { width: 36px; height: 36px; font-size: 16px; } .zrow { gap: 6px; } }
   .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
   .filters button { font: inherit; font-size: 13px; color: var(--sub); background: transparent; cursor: pointer;
                     border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; }
@@ -145,6 +187,8 @@ function start() {
   document.body.style.setProperty("--ratio", `${ra || 5} / ${rb || 7}`);
   // 設定の角の丸さ（230px幅のカード基準）を一覧の大きさに合わせる
   document.body.style.setProperty("--cr", Math.round((Number(S.cardRadius) || 0) * 0.55) + "px");
+  document.body.style.setProperty("--zcr", Math.round((Number(S.cardRadius) || 0) * 1.6) + "px");   // 拡大表示用
+  document.body.style.setProperty("--rn", String((ra || 5) / (rb || 7)));
   document.title = D.title || "カードコレクション";
 
   const rarities = S.rarities;
@@ -168,7 +212,7 @@ function start() {
     return `<header class="site"><h1>${esc(D.title || "カードコレクション")}</h1>${sub ? `<p>${sub}</p>` : ""}</header>`;
   }
 
-  function cardHtml(c, count) {
+  function cardHtml(c, count, opts = {}) {
     const r = rarityOf(c.rarity);
     const cls = ["card"];
     if (S.showFrame === false) cls.push("noframe");
@@ -182,10 +226,12 @@ function start() {
     const inner = c.image
       ? `<img src="${esc(c.image)}" alt="${esc(c.name)}" loading="lazy" data-id="${esc(c.id)}">`
       : `<span class="rl">${esc(r.label)}</span><span class="nm">${esc(c.name)}</span>`;
-    return `<figure class="slot"><div class="${cls.join(" ")}" style="${style}">
+    const card = `<div class="${cls.join(" ")}" style="${style}">
       <div class="paper">${inner}</div>
       ${c.image ? `<span class="badge">${esc(r.label)}</span>` : ""}
-      ${count > 1 ? `<span class="count">×${count}</span>` : ""}</div>
+      ${count > 1 && !opts.bare ? `<span class="count">×${count}</span>` : ""}</div>`;
+    if (opts.bare) return card;
+    return `<figure class="slot"><button class="open" data-open="${esc(c.id)}" aria-label="${esc(c.name)}を大きく見る">${card}</button>
       <figcaption>${esc(c.name)}</figcaption></figure>`;
   }
 
@@ -193,10 +239,62 @@ function start() {
     return u.icon ? `<img class="icon" src="${esc(u.icon)}" alt="" referrerpolicy="no-referrer">` : `<span class="icon"></span>`;
   }
 
+  // 累計売上（設定でオンのときだけ）
+  function pointsHtml() {
+    const p = D.points;
+    if (!p) return "";
+    const name = p.name || "ポイント";
+    return `<div class="pts"><span class="pl">${esc(name)}累計売上</span>
+      <span class="pv">${Number(p.total || 0).toLocaleString("ja-JP")}<small>${esc(name)}</small></span></div>`;
+  }
+
+  // ---------- 拡大表示 ----------
+  const zoom = document.createElement("dialog");
+  zoom.id = "zoom";
+  zoom.setAttribute("aria-label", "カードを大きく見る");
+  document.body.appendChild(zoom);
+  zoom.addEventListener("click", (e) => { if (e.target === zoom) zoom.close(); });   // まわりを押すと閉じる
+  let zList = [], zIndex = 0, zUser = null;
+  function showZoom() {
+    const c = zList[zIndex];
+    if (!c) return;
+    const r = rarityOf(c.rarity);
+    const n = zUser.cards[c.id] || 0;
+    zoom.innerHTML = `<div class="zwrap">
+      <div class="zrow">
+        <button class="znav" data-z="-1" aria-label="前のカード" ${zIndex === 0 ? "disabled" : ""}>←</button>
+        <div class="zcard">${cardHtml(c, n, { bare: true })}</div>
+        <button class="znav" data-z="1" aria-label="次のカード" ${zIndex >= zList.length - 1 ? "disabled" : ""}>→</button>
+      </div>
+      <div class="zinfo"><b>${esc(c.name)}</b><span>${esc(r.label)}・${n}枚持っている</span></div>
+      <button class="zclose">閉じる</button>
+    </div>`;
+    zoom.querySelectorAll(".znav").forEach((b) => b.addEventListener("click", () => moveZoom(Number(b.dataset.z))));
+    zoom.querySelector(".zclose").addEventListener("click", () => zoom.close());
+    const img = zoom.querySelector("img");
+    if (img) { const go = () => fitArt(img, c.crop); if (img.complete && img.naturalWidth) requestAnimationFrame(go); else img.addEventListener("load", go); }
+  }
+  function moveZoom(d) {
+    const i = zIndex + d;
+    if (i < 0 || i >= zList.length) return;
+    zIndex = i; showZoom();
+    const b = zoom.querySelector(`.znav[data-z="${d}"]`);
+    (b && !b.disabled ? b : zoom.querySelector(".zclose")).focus();
+  }
+  zoom.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); moveZoom(-1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); moveZoom(1); }
+  });
+  function openZoom(u, list, id) {
+    zUser = u; zList = list; zIndex = Math.max(0, list.findIndex((c) => c.id === id));
+    showZoom();
+    zoom.showModal();
+  }
+
   // ---------- 一覧 ----------
   function renderList(q = "") {
     const list = users.filter((u) => !q || u.name.toLowerCase().includes(q.toLowerCase()));
-    app.innerHTML = head(`${users.length}人が参加・全${active.length}種類`) + `
+    app.innerHTML = head(`${users.length}人が参加・全${active.length}種類`) + pointsHtml() + `
       <div class="tools"><input type="search" id="q" placeholder="名前でさがす" aria-label="名前でさがす" value="${esc(q)}"></div>
       ${list.length ? `<ul class="users">${list.map((u) => {
         const pct = Math.min(100, Math.round(u.kinds / total * 100));
@@ -217,18 +315,22 @@ function start() {
   }
 
   // ---------- 個人ページ ----------
-  function renderUser(u, filter = "all") {
+  function renderUser(u, filter = "all", rar = null) {
     const pct = Math.min(100, Math.round(u.kinds / total * 100));
     const sorted = active.slice().sort(byRarity);
-    const shown = sorted.filter((c) => filter === "all" || (filter === "have" ? u.cards[c.id] : !u.cards[c.id]));
+    const inRar = (c) => !rar || c.rarity === rar;
+    const shown = sorted.filter((c) => inRar(c) && (filter === "all" || (filter === "have" ? u.cards[c.id] : !u.cards[c.id])));
     // 抽選から外れたけど持っているカード
-    const retired = D.cards.filter((c) => !c.active && u.cards[c.id]).sort(byRarity);
+    const retired = D.cards.filter((c) => !c.active && u.cards[c.id] && inRar(c)).sort(byRarity);
     const chips = rarities.slice().reverse().map((r) => {
       const all = active.filter((c) => c.rarity === r.id);
       if (!all.length) return "";
       const have = all.filter((c) => u.cards[c.id]).length;
-      return `<li style="--rc:${esc(r.color)};--rt:${esc(r.text)}"><b>${esc(r.label)}</b>${have}/${all.length}</li>`;
+      return `<li><button data-r="${esc(r.id)}" aria-pressed="${rar === r.id}" style="--rc:${esc(r.color)};--rt:${esc(r.text)}"
+        aria-label="${esc(r.label)}だけ表示（${have}/${all.length}）"><b>${esc(r.label)}</b>${have}/${all.length}</button></li>`;
     }).join("");
+    const filtered = filter !== "all" || !!rar;
+    const rarLabel = rar ? rarityOf(rar).label : "";
     const btn = (v, label) => `<button data-f="${v}" aria-pressed="${filter === v}">${label}</button>`;
 
     app.innerHTML = head("") + `
@@ -239,13 +341,29 @@ function start() {
         <span class="spacer" style="flex:1"></span>
         <span class="big">${pct}%</span>
       </div>
-      <ul class="chips">${chips}</ul>
+      <ul class="chips${rar ? " picking" : ""}">${chips}<li><button class="reset" id="resetF" ${filtered ? "" : "disabled"}>リセット</button></li></ul>
       <div class="filters" role="group" aria-label="表示するカード">${btn("all", "すべて")}${btn("have", "持っている")}${btn("miss", "まだ")}</div>
       ${shown.length ? `<div class="grid">${shown.map((c) => cardHtml(c, u.cards[c.id] || 0)).join("")}</div>`
-                     : `<p class="empty">${filter === "miss" ? "コンプリート！" : "まだカードがありません"}</p>`}
+                     : `<p class="empty">${filter === "miss" ? (rar ? `${esc(rarLabel)}はコンプリート！` : "コンプリート！") : (rar ? `${esc(rarLabel)}のカードはまだありません` : "まだカードがありません")}</p>`}
       ${retired.length && filter !== "miss" ? `<h3>今は出ないカード</h3><div class="grid">${retired.map((c) => cardHtml(c, u.cards[c.id])).join("")}</div>` : ""}`;
     app.querySelectorAll(".filters button").forEach((b) =>
-      b.addEventListener("click", () => renderUser(u, b.dataset.f)));
+      b.addEventListener("click", () => renderUser(u, b.dataset.f, rar)));
+    // レア度で絞り込む（もう一度押すと解除）
+    app.querySelectorAll(".chips button[data-r]").forEach((b) =>
+      b.addEventListener("click", () => {
+        renderUser(u, filter, rar === b.dataset.r ? null : b.dataset.r);
+        const again = app.querySelector(`.chips button[data-r="${CSS.escape(b.dataset.r)}"]`);
+        if (again) again.focus();
+      }));
+    document.getElementById("resetF").addEventListener("click", () => {
+      renderUser(u, "all", null);
+      const first = app.querySelector(".chips button[data-r]");
+      if (first) first.focus();
+    });
+    // 持っているカードを押すと大きく見られる（今表示している順で、前後に移動できる）
+    const openable = [...shown, ...(filter !== "miss" ? retired : [])].filter((c) => u.cards[c.id]);
+    app.querySelectorAll("button[data-open]").forEach((b) =>
+      b.addEventListener("click", () => openZoom(u, openable, b.dataset.open)));
     app.querySelectorAll("img[data-id]").forEach((img) => {
       const card = D.cards.find((c) => c.id === img.dataset.id);
       const go = () => fitArt(img, card && card.crop);
@@ -256,6 +374,7 @@ function start() {
   function route() {
     const m = /^#u(\d+)$/.exec(location.hash);
     const u = m && users.find((x) => x.key === Number(m[1]));
+    if (zoom.open) zoom.close();
     if (u) { renderUser(u); window.scrollTo(0, 0); }
     else renderList();
   }
