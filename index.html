@@ -25,6 +25,38 @@
   header.site h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: .02em; }
   header.site p { margin: 2px 0 0; color: var(--sub); font-size: 13px; }
 
+  /* ---------- 配信者さんのリンク ---------- */
+  .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .links a { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+             color: #fff; text-decoration: none; font-weight: 700; font-size: 12px; background: var(--lc, var(--accent));
+             transition: transform .15s; }
+  .links a:hover { transform: translateY(-2px); filter: brightness(1.15); }
+  .links img { width: 20px; height: 20px; filter: invert(1); display: block; }   /* 黒いアイコンを白に */
+  .links a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- 称号 ---------- */
+  .titles { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; padding: 0; list-style: none; }
+  .titles li { display: inline-flex; align-items: center; gap: 4px; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+               background: var(--accent-soft); color: var(--text); border: 1px solid var(--accent); }
+  .titles li.locked { background: transparent; color: var(--sub); border: 1px dashed var(--line); font-weight: 400; opacity: .7; }
+  .titles li.tm { background: none; border: none; padding: 0; }
+  .titles li { position: relative; }
+  .tt { all: unset; cursor: help; }
+  .tt:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  /* 条件の吹き出し（マウスを乗せる・押す・キーボードで選ぶと出る） */
+  .tt[data-desc]::after { content: attr(data-desc); position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+    white-space: nowrap; background: #3d2a40; color: #fff; font-size: 12px; font-weight: 400; padding: 4px 10px; border-radius: 8px;
+    opacity: 0; pointer-events: none; transition: opacity .12s; z-index: 5; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+  .tt.edge-l::after { left: 0; transform: none; }
+  .tt.edge-r::after { left: auto; right: 0; transform: none; }
+  .tt[data-desc]:hover::after, .tt[data-desc]:focus-visible::after, .tt[aria-expanded=true]::after { opacity: 1; }
+  .titles-more { font: inherit; font-size: 13px; color: var(--sub); background: transparent; border: none; cursor: pointer; padding: 3px 6px; text-decoration: underline; }
+  .tcount { font-size: 12px; color: var(--sub); margin-left: 6px; }
+  .more { display: block; margin: 14px auto 0; font: inherit; font-size: 14px; color: var(--text); background: var(--panel); cursor: pointer;
+          border: 1px solid var(--line); border-radius: 999px; padding: 8px 28px; }
+  .more:hover { border-color: var(--accent); }
+  .more:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
   /* ---------- 一覧 ---------- */
   .tools { display: flex; gap: 10px; margin-bottom: 12px; }
   .tools input { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line);
@@ -43,6 +75,7 @@
   .meter i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
   .stat { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--sub); white-space: nowrap; }
   .stat b { color: var(--text); font-size: 18px; }
+  .stat .pl { font-size: 12px; margin-right: 4px; }
   .done .stat b { color: var(--accent); }
   .empty { color: var(--sub); padding: 24px 16px; text-align: center; }
 
@@ -53,6 +86,9 @@
   .profile .icon { width: 64px; height: 64px; }
   .profile h2 { margin: 0; font-size: 24px; }
   .profile p { margin: 0; color: var(--sub); }
+  .rate { display: flex; align-items: baseline; gap: 6px; margin-left: 18px; padding-left: 18px; border-left: 1px solid var(--line); }
+  .rate span { color: var(--sub); font-weight: 700; font-size: 14px; }
+  @media (max-width: 520px) { .profile { flex-wrap: wrap; } .rate { margin-left: 0; padding-left: 0; border-left: none; width: 100%; } }
   .big { font-size: 40px; font-weight: 900; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
   .chips button { font: inherit; color: inherit; cursor: pointer; border: 2px solid var(--rc); border-radius: 999px;
@@ -147,6 +183,38 @@
 <!-- 手動で書き出したときは data.js、公開サイトでは data.json を読みます -->
 <script src="data.js" onerror="void 0"></script>
 <script>
+// ================= ここを変えると見た目が変わります =================
+// 一番上に出すリンク（増やす・消すのも自由）
+//   icon は Simple Icons の名前（twitch / x / youtube など）
+const LINKS = [
+  { label: "Twitch", icon: "twitch", url: "https://www.twitch.tv/100nekox", color: "#9146ff" },
+  { label: "X（Twitter）", icon: "x", url: "https://x.com/_100neko_", color: "#000000" },
+  { label: "YouTube", icon: "youtube", url: "https://www.youtube.com/@100nekox", color: "#ff0000" },
+];
+const ICON_BASE = "https://cdn.jsdelivr.net/npm/simple-icons@16.34.0/icons/";
+// 一覧に最初に出す人数（「もっと見る」で、この人数ずつ増えます）
+const SHOW_LIMIT = 50;
+// 称号（仮）。check が true になると付きます
+//   u.packs：開けたパック数　u.kinds：集めた種類　all：全種類　has(レア度ID)：そのレア度を1枚でも持っている
+//   comp(レア度ID)：そのレア度をコンプ　maxDup：同じカードを一番多く持っている枚数
+//   need：そのレア度がないときは称号ごと出さない　desc：マウスを乗せる・押したときに出る条件
+const TITLES = [
+  { name: "はじめての開封", desc: "パックを1回開ける", check: (u) => u.packs >= 1 },
+  { name: "10パック開封", desc: "パックを10回開ける", check: (u) => u.packs >= 10 },
+  { name: "50パック開封", desc: "パックを50回開ける", check: (u) => u.packs >= 50 },
+  { name: "100パック開封", desc: "パックを100回開ける", check: (u) => u.packs >= 100 },
+  { name: "はじめてのSR", desc: "SRを1枚手に入れる", need: "SR", check: (u, x) => x.has("SR") },
+  { name: "はじめてのSSR", desc: "SSRを1枚手に入れる", need: "SSR", check: (u, x) => x.has("SSR") },
+  { name: "はじめてのUR", desc: "URを1枚手に入れる", need: "UR", check: (u, x) => x.has("UR") },
+  { name: "SRコンプ", desc: "SRを全種類そろえる", need: "SR", check: (u, x) => x.comp("SR") },
+  { name: "SSRコンプ", desc: "SSRを全種類そろえる", need: "SSR", check: (u, x) => x.comp("SSR") },
+  { name: "URコンプ", desc: "URを全種類そろえる", need: "UR", check: (u, x) => x.comp("UR") },
+  { name: "半分あつめた", desc: "全カードの半分の種類を集める", check: (u, x) => u.kinds * 2 >= x.all },
+  { name: "コンプリート", desc: "全種類のカードをそろえる", check: (u, x) => u.kinds >= x.all },
+  { name: "ダブりすぎ（同じカード10枚）", desc: "同じカードを10枚持つ", check: (u, x) => x.maxDup >= 10 },
+];
+// ===================================================================
+
 let D = window.CARDPACK_DATA;
 const app = document.getElementById("app");
 function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -168,6 +236,13 @@ function fitArt(img, crop) {
 }
 
 (async () => {
+  // このPC（わんコメ）で開いたときは、公開を待たずに今の記録を直接読む
+  if (!D && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    try {
+      const r = await fetch("/api/plugins/local.cardpack.collection?type=sitedata&t=" + Date.now(), { cache: "no-store" });
+      if (r.ok) { const j = await r.json(); D = j.response || j; D.local = true; }
+    } catch (e) { /* わんコメが動いていないとき */ }
+  }
   if (!D) {
     try {
       const r = await fetch("data.json?t=" + Date.now(), { cache: "no-store" });
@@ -206,10 +281,15 @@ function start() {
 
   const when = new Date(D.exportedAt);
   document.getElementById("foot").textContent =
-    `${when.toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" })} 時点の記録`;
+    D.local ? "このPCで見ています（今の記録・まだ公開されていない変更も表示）"
+          : `${when.toLocaleString("ja-JP", { dateStyle: "medium", timeStyle: "short" })} 時点の記録`;
 
   function head(sub) {
-    return `<header class="site"><h1>${esc(D.title || "カードコレクション")}</h1>${sub ? `<p>${sub}</p>` : ""}</header>`;
+    const links = LINKS.filter((l) => /^https:\/\//.test(l.url)).map((l) =>
+      `<a href="${esc(l.url)}" target="_blank" rel="noopener" style="--lc:${esc(l.color || "")}" aria-label="${esc(l.label)}" title="${esc(l.label)}">${
+        l.icon ? `<img src="${ICON_BASE}${encodeURIComponent(l.icon)}.svg" alt="" onerror="this.replaceWith(document.createTextNode('${esc(l.label.split(/[（(]/)[0].slice(0, 2))}'))">` : esc(l.label.slice(0, 2))}</a>`).join("");
+    return `<header class="site"><h1>${esc(D.title || "カードコレクション")}</h1>${sub ? `<p>${sub}</p>` : ""}
+      ${links ? `<nav class="links" aria-label="配信者さんのページ">${links}</nav>` : ""}</header>`;
   }
 
   function cardHtml(c, count, opts = {}) {
@@ -229,14 +309,40 @@ function start() {
     const card = `<div class="${cls.join(" ")}" style="${style}">
       <div class="paper">${inner}</div>
       ${c.image ? `<span class="badge">${esc(r.label)}</span>` : ""}
-      ${count > 1 && !opts.bare ? `<span class="count">×${count}</span>` : ""}</div>`;
+      ${count > 1 && !opts.bare ? `<span class="count">×${count > 99 ? "99+" : count}</span>` : ""}</div>`;
     if (opts.bare) return card;
     return `<figure class="slot"><button class="open" data-open="${esc(c.id)}" aria-label="${esc(c.name)}を大きく見る">${card}</button>
       <figcaption>${esc(c.name)}</figcaption></figure>`;
   }
 
-  function iconHtml(u) {
-    return u.icon ? `<img class="icon" src="${esc(u.icon)}" alt="" referrerpolicy="no-referrer">` : `<span class="icon"></span>`;
+  function iconHtml(u, lazy) {
+    return u.icon ? `<img class="icon" src="${esc(u.icon)}" alt="" referrerpolicy="no-referrer"${lazy ? ` loading="lazy"` : ""}>` : `<span class="icon"></span>`;
+  }
+
+  // ---------- 称号 ----------
+  function titlesOf(u) {
+    const x = {
+      all: active.length,
+      has: (id) => D.cards.some((c) => c.rarity === id && u.cards[c.id]),
+      comp: (id) => { const l = active.filter((c) => c.rarity === id); return l.length > 0 && l.every((c) => u.cards[c.id]); },
+      maxDup: Math.max(0, ...Object.values(u.cards).map(Number)),
+    };
+    // 存在しないレア度の称号は出さない
+    const exists = (t) => !t.need || active.some((c) => c.rarity === t.need);
+    return TITLES.filter(exists).map((t) => {
+      let got = false;
+      try { got = !!t.check(u, x); } catch (e) { /* 書き間違いがあっても止めない */ }
+      return { name: t.name, desc: t.desc || "", got };
+    });
+  }
+  function titlesHtml(u, showAll) {
+    const list = titlesOf(u);
+    const got = list.filter((t) => t.got);
+    const shown = showAll ? list : got;
+    return `<h3>称号<span class="tcount">${got.length}/${list.length}</span></h3>
+      <ul class="titles">${shown.map((t) => `<li class="${t.got ? "" : "locked"}"><button class="tt" aria-expanded="false" ${t.desc ? `data-desc="${esc(t.desc)}"` : ""}>${t.got ? "★" : "？"} ${esc(t.name)}</button></li>`).join("")
+        || `<li class="locked">まだ称号はありません</li>`}
+      <li class="tm"><button class="titles-more" id="tMore">${showAll ? "持っている称号だけ" : "まだの称号も見る"}</button></li></ul>`;
   }
 
   // 累計売上（設定でオンのときだけ）
@@ -292,21 +398,38 @@ function start() {
   }
 
   // ---------- 一覧 ----------
+  let listMax = SHOW_LIMIT;
   function renderList(q = "") {
-    const list = users.filter((u) => !q || u.name.toLowerCase().includes(q.toLowerCase()));
+    const hits = users.filter((u) => !q || u.name.toLowerCase().includes(q.toLowerCase()));
+    const list = hits.slice(0, listMax);
+    const cut = hits.length - list.length;
     app.innerHTML = head(`${users.length}人が参加・全${active.length}種類`) + pointsHtml() + `
-      <div class="tools"><input type="search" id="q" placeholder="名前でさがす" aria-label="名前でさがす" value="${esc(q)}"></div>
+      <div class="tools"><input type="search" id="q" list="names" placeholder="名前でさがす（入力・選択）" aria-label="名前でさがす" value="${esc(q)}" autocomplete="off"></div>
+      <datalist id="names">${users.map((u) => `<option value="${esc(u.name)}">`).join("")}</datalist>
       ${list.length ? `<ul class="users">${list.map((u) => {
         const pct = Math.min(100, Math.round(u.kinds / total * 100));
         return `<li class="${u.kinds >= active.length && active.length ? "done" : ""}"><a href="#u${u.key}">
           <span class="rank">${users.indexOf(u) + 1}</span>
-          ${iconHtml(u)}
+          ${iconHtml(u, true)}
           <span class="who"><b>${esc(u.name)}</b><span class="meter"><i style="width:${pct}%"></i></span></span>
-          <span class="stat"><b>${pct}%</b><br>${u.kinds}/${active.length}種・${u.packs}パック</span>
+          <span class="stat"><span class="pl">所持率</span><b>${pct}%</b><br>${u.kinds}/${active.length}種・${u.packs}パック</span>
         </a></li>`;
-      }).join("")}</ul>` : `<p class="empty">${users.length ? "見つかりませんでした" : "まだ誰もパックを引いていません"}</p>`}`;
+      }).join("")}</ul>${cut > 0 ? `<button class="more" id="more">もっと見る（あと${cut}人）</button>` : ""}` : `<p class="empty">${users.length ? "見つかりませんでした" : "まだ誰もパックを引いていません"}</p>`}`;
+    const more = document.getElementById("more");
+    if (more) more.addEventListener("click", () => {
+      const y = window.scrollY, from = list.length;
+      listMax += SHOW_LIMIT;
+      renderList(document.getElementById("q").value);
+      window.scrollTo(0, y);
+      // 増えた最初の人にフォーカスを移す（キーボードで続きから見られるように）
+      const a = app.querySelectorAll(".users a")[from];
+      if (a) a.focus({ preventScroll: true });
+    });
     const input = document.getElementById("q");
-    input.addEventListener("input", () => {
+    input.addEventListener("input", (e) => {
+      const exact = users.filter((u) => u.name === input.value);
+      // 候補から選んだとき（または名前を最後まで打ったとき）はその人のページへ
+      if (exact.length === 1 && (e.inputType === "insertReplacementText" || !e.inputType)) { location.hash = "#u" + exact[0].key; return; }
       const pos = input.selectionStart;
       renderList(input.value);
       const again = document.getElementById("q");
@@ -315,6 +438,7 @@ function start() {
   }
 
   // ---------- 個人ページ ----------
+  let titlesAll = false;
   function renderUser(u, filter = "all", rar = null) {
     const pct = Math.min(100, Math.round(u.kinds / total * 100));
     const sorted = active.slice().sort(byRarity);
@@ -338,14 +462,36 @@ function start() {
       <div class="profile">
         ${iconHtml(u)}
         <div><h2>${esc(u.name)}</h2><p>${u.packs}パック開封・${u.kinds}/${active.length}種類</p></div>
-        <span class="spacer" style="flex:1"></span>
-        <span class="big">${pct}%</span>
+        <div class="rate"><span>所持率</span><b class="big">${pct}%</b></div>
       </div>
+      ${titlesHtml(u, titlesAll)}
+      <h3>カード</h3>
       <ul class="chips${rar ? " picking" : ""}">${chips}<li><button class="reset" id="resetF" ${filtered ? "" : "disabled"}>リセット</button></li></ul>
       <div class="filters" role="group" aria-label="表示するカード">${btn("all", "すべて")}${btn("have", "持っている")}${btn("miss", "まだ")}</div>
       ${shown.length ? `<div class="grid">${shown.map((c) => cardHtml(c, u.cards[c.id] || 0)).join("")}</div>`
                      : `<p class="empty">${filter === "miss" ? (rar ? `${esc(rarLabel)}はコンプリート！` : "コンプリート！") : (rar ? `${esc(rarLabel)}のカードはまだありません` : "まだカードがありません")}</p>`}
       ${retired.length && filter !== "miss" ? `<h3>今は出ないカード</h3><div class="grid">${retired.map((c) => cardHtml(c, u.cards[c.id])).join("")}</div>` : ""}`;
+    // 画面の端では吹き出しが切れないように寄せる
+    const edge = (b) => {
+      const r = b.getBoundingClientRect(), mid = (r.left + r.right) / 2, room = 120;
+      b.classList.toggle("edge-l", mid < room);
+      b.classList.toggle("edge-r", mid > document.documentElement.clientWidth - room);
+    };
+    app.querySelectorAll(".tt").forEach((b) => { b.addEventListener("mouseenter", () => edge(b)); b.addEventListener("focus", () => edge(b)); });
+    // 押すと条件を出す（スマホ用）。もう一度押すか、ほかを押すと消える
+    app.querySelectorAll(".tt").forEach((b) => b.addEventListener("click", () => {
+      edge(b);
+      const open = b.getAttribute("aria-expanded") === "true";
+      app.querySelectorAll(".tt").forEach((x) => x.setAttribute("aria-expanded", "false"));
+      b.setAttribute("aria-expanded", String(!open));
+    }));
+    document.getElementById("tMore").addEventListener("click", () => {
+      titlesAll = !titlesAll;
+      const y = window.scrollY;
+      renderUser(u, filter, rar);
+      window.scrollTo(0, y);
+      document.getElementById("tMore").focus();
+    });
     app.querySelectorAll(".filters button").forEach((b) =>
       b.addEventListener("click", () => renderUser(u, b.dataset.f, rar)));
     // レア度で絞り込む（もう一度押すと解除）
